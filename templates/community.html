@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Community Submissions - PhishShare</title>
+  <link rel="icon" href="{{ url_for('static', filename='images/Phish_Share.png') }}" type="image/png">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <style>
+    .star-icon {
+      font-size: 1.5rem;
+      color: #ccc;
+      cursor: pointer;
+      user-select: none;
+    }
+    .star-icon.selected {
+      color: #f0ad4e;
+    }
+    .post-container {
+      display: flex;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+      background-color: #f9f9f9;
+    }
+    .post-left, .post-center, .post-right {
+      padding: 10px;
+    }
+    .post-left, .post-center {
+      width: 37.5%;
+    }
+    .post-right {
+      width: 25%;
+      border-left: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+    }
+    .user-info {
+      font-size: 0.9rem;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .user-info img {
+      width: 24px;
+      height: 24px;
+      margin-right: 5px;
+    }
+    .timestamp {
+      font-size: 0.8rem;
+      color: gray;
+    }
+    .scrollable-feed {
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .disabled-comment {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+    /* New scrollable feedback container */
+    .feedback-list {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      padding: 10px;
+      border-radius: 5px;
+      background-color: #fff;
+      margin-top: 10px;
+      flex-grow: 1;
+    }
+
+    /* Scrollable fields for email parts */
+    .post-left p.scrollable-field {
+      max-height: 5rem;          /* Adjust height as needed */
+      overflow-y: auto;
+      padding-right: 5px;        /* To avoid scrollbar overlap */
+      white-space: pre-wrap;     /* Preserve line breaks */
+      word-wrap: break-word;     /* Break long words */
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: #fff;
+      margin-bottom: 10px;
+    }
+    .navbar-custom {
+      background-color: #02838f !important; /* Teal */
+    }
+
+    .navbar-custom .nav-link {
+      color: white !important;
+      font-weight: 500;
+    }
+
+    .navbar-custom .nav-link:hover {
+      color: #d1ecf1 !important;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container mt-4">
+    <div class="text-center">
+      <a href="{{ url_for('home') }}">
+        <img src="{{ url_for('static', filename='images/Phish_Share.png') }}" alt="PhishShare Logo" style="max-height: 120px;">
+      </a>
+    </div>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-custom my-4">
+      <div class="container justify-content-center">
+        <ul class="navbar-nav">
+          <li class="nav-item px-3">
+            <a class="nav-link" href="{{ url_for('home') }}">Home</a>
+          </li>
+          <li class="nav-item px-3">
+            <a class="nav-link" href="{{ url_for('community') }}">Community Submissions</a>
+          </li>
+          <li class="nav-item px-3">
+            <a class="nav-link" href="{{ url_for('login') }}">
+              {% if session.get('user_id') %}
+                Dashboard
+              {% else %}
+                Login
+              {% endif %}
+            </a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <div class="text-end mb-3">
+      <a href="{{ url_for('download_submissions') }}" class="btn btn-success">
+        <i class="bi bi-download"></i> Download All Submissions
+      </a>
+    </div>
+
+    <!-- Submission Feed -->
+    <div class="scrollable-feed mt-4">
+      {% for submission in submissions %}
+      <div class="post-container">
+        <!-- Left: Email Submission -->
+        <div class="post-left">
+          <div class="user-info">
+            <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" alt="User icon" />
+            Anonymous
+          </div>
+          <p><strong>Sender:</strong></p>
+          <p class="scrollable-field">{{ submission.email_sender }}</p>
+
+          <p><strong>Subject:</strong></p>
+          <p class="scrollable-field">{{ submission.email_subject }}</p>
+
+          <p><strong>Body:</strong></p>
+          <p class="scrollable-field">{{ submission.email_body }}</p>
+
+          <p class="timestamp">Submitted: {{ submission.date_submitted }}</p>
+        </div>
+
+        <!-- Center: AI Analysis -->
+        <div class="post-center">
+          <h6 class="fw-bold">AI Analysis</h6>
+          <p>{{ submission.analysis_summary }}</p>
+        </div>
+
+        <!-- Right: Feedback -->
+        <div class="post-right">
+          <h6 class="fw-bold">Community Feedback</h6>
+          {% if logged_in %}
+            {% if submission.id not in rated_ids %}
+              <form method="POST" action="{{ url_for('submit_feedback') }}">
+                {% if csrf_token %}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% endif %}
+
+                <input type="hidden" name="email_submission_id" value="{{ submission.id }}" />
+
+                <!-- Star Rating -->
+                <div class="mb-2 star-rating">
+                  <label class="form-label d-block">Rating:</label>
+                  <div class="star-container">
+                    {% for star in range(1, 6) %}
+                    <i class="star-icon bi bi-star" data-value="{{ star }}" data-submission-id="{{ submission.id }}"></i>
+                    {% endfor %}
+                  </div>
+                  <input type="hidden" name="rating" id="rating-{{ submission.id }}" value="" required />
+                </div>
+
+                <!-- Comment Box -->
+                <div class="mb-2">
+                  <label for="comment-{{ submission.id }}" class="form-label">Comment (max 250 characters):</label>
+                  <textarea class="form-control" id="comment-{{ submission.id }}" name="comment" rows="3" maxlength="250" placeholder="Enter your comment"></textarea>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="btn btn-primary btn-sm">Submit</button>
+              </form>
+            {% else %}
+              <p class="text-muted"><em>You have already submitted feedback for this post.</em></p>
+            {% endif %}
+          {% else %}
+            <div class="disabled-comment">
+              <p><em>Login to leave ratings and comments.</em></p>
+              <button class="btn btn-secondary btn-sm" onclick="alert('Please log in to submit feedback.')">Submit</button>
+            </div>
+          {% endif %}
+
+          <!-- Display Community Feedback -->
+          {% if submission.feedback %}
+            <div class="feedback-list">
+              {% for fb in submission.feedback %}
+                <div class="mb-3">
+                  <p class="mb-1">
+                    <strong>{{ fb.username }}</strong>
+                    <span class="text-warning ms-1">
+                      {% for i in range(fb.rating) %}
+                        <i class="bi bi-star-fill"></i>
+                      {% endfor %}
+                      {% for i in range(5 - fb.rating) %}
+                        <i class="bi bi-star"></i>
+                      {% endfor %}
+                    </span>
+                  </p>
+                  <p class="mb-1">{{ fb.comment }}</p>
+                  <p class="timestamp">Rated on: {{ fb.timestamp }}</p>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="text-muted mt-2"><em>No community feedback yet.</em></p>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Star Rating JS -->
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const starContainers = document.querySelectorAll('.star-container');
+      
+      starContainers.forEach(container => {
+        const stars = container.querySelectorAll('.star-icon');
+        const submissionId = stars[0].getAttribute('data-submission-id');
+        const hiddenInput = document.getElementById('rating-' + submissionId);
+        
+        stars.forEach((star, index) => {
+          star.addEventListener('click', () => {
+            const ratingValue = star.getAttribute('data-value');
+            hiddenInput.value = ratingValue;
+            
+            stars.forEach((s, i) => {
+              if (i < ratingValue) {
+                s.classList.add('selected');
+                s.classList.remove('bi-star');
+                s.classList.add('bi-star-fill');
+              } else {
+                s.classList.remove('selected');
+                s.classList.remove('bi-star-fill');
+                s.classList.add('bi-star');
+              }
+            });
+          });
+          
+          star.addEventListener('mouseover', () => {
+            const ratingValue = star.getAttribute('data-value');
+            
+            stars.forEach((s, i) => {
+              if (i < ratingValue) {
+                s.classList.add('selected');
+                s.classList.remove('bi-star');
+                s.classList.add('bi-star-fill');
+              }
+            });
+          });
+          
+          star.addEventListener('mouseout', () => {
+            const selectedRating = hiddenInput.value || 0;
+            
+            stars.forEach((s, i) => {
+              if (i < selectedRating) {
+                s.classList.add('selected');
+                s.classList.remove('bi-star');
+                s.classList.add('bi-star-fill');
+              } else {
+                s.classList.remove('selected');
+                s.classList.remove('bi-star-fill');
+                s.classList.add('bi-star');
+              }
+            });
+          });
+        });
+      });
+    });
+  </script>
+</body>
+</html>

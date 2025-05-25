@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PhishShare</title>
+  <link rel="icon" href="{{ url_for('static', filename='images/Phish_Share.png') }}" type="image/png">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .required-note {
+      color: red;
+      font-size: 0.9em;
+    }
+    .navbar-custom {
+      background-color: #02838f !important; /* Teal */
+    }
+    .navbar-custom .nav-link {
+      color: white !important;
+      font-weight: 500;
+    }
+    .navbar-custom .nav-link:hover {
+      color: #d1ecf1 !important;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container mt-4">
+    <div class="text-center">
+      <a href="{{ url_for('home') }}">
+        <img src="{{ url_for('static', filename='images/Phish_Share.png') }}" alt="PhishShare Logo" style="max-height: 120px;">
+      </a>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-custom my-4">
+      <div class="container justify-content-center">
+        <ul class="navbar-nav">
+          <li class="nav-item px-3">
+            <a class="nav-link" href="{{ url_for('home') }}">Home</a>
+          </li>
+          <li class="nav-item px-3">
+            <a class="nav-link" href="{{ url_for('community') }}">Community Submissions</a>
+          </li>
+          <li class="nav-item px-3">
+            <a class="nav-link" href="{{ url_for('login') }}">
+              {% if session.get('user_id') %}
+                Dashboard
+              {% else %}
+                Login
+              {% endif %}
+            </a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <div class="text-center">
+      <h2 class="fw-bold">Welcome to PhishShare!</h2>
+      <p>PhishShare is a free, AI-powered platform designed to help users detect and learn about email phishing attacks. Users can submit suspicious email content, receive an instant AI-generated analysis, and browse a public database of real phishing examples. By sharing phishing attempts and rating the AI's accuracy, PhishShare builds a community-driven defense against email-based threats.</p>
+      <p class="fw-bold text-danger">PHISHSHARE IS NOT RESPONSIBLE FOR SHARING OF SENSITIVE CONTENT/DETAILS</p>
+    </div>
+
+    <!-- Email Submission Form -->
+    <form action="/submit_email" method="POST" class="mt-5">
+      <div class="row mb-3">
+        <div class="col-md-2 text-end">
+          <label for="sender_email" class="form-label">Sender's Email:</label>
+        </div>
+        <div class="col-md-10">
+          <span class="required-note">*Required</span>
+          <input type="email" class="form-control" id="sender_email" name="sender_email" required>
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <div class="col-md-2 text-end">
+          <label for="subject" class="form-label">Subject:</label>
+        </div>
+        <div class="col-md-10">
+          <input type="text" class="form-control" id="subject" name="subject">
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <div class="col-md-2 text-end">
+          <label for="body" class="form-label">Body:</label>
+        </div>
+        <div class="col-md-10">
+          <span class="required-note">*Required</span>
+          <textarea class="form-control" id="body" name="body" rows="6" required></textarea>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-end">
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </div>
+    </form>
+  </div>
+</body>
+</html>
