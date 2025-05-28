@@ -32,6 +32,54 @@
       color: #d1ecf1 !important;
       text-decoration: underline;
     }
+    
+    /* AI Analysis Specific Styles */
+    .phishing-risk {
+      font-size: 1.1rem;
+      font-weight: bold;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+    .risk-high {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .risk-medium {
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeaa7;
+    }
+    .risk-low {
+      background-color: #d1edff;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+    .reasons-list {
+      background-color: white;
+      border-left: 4px solid #02838f;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 0 6px 6px 0;
+    }
+    .reason-item {
+      margin-bottom: 8px;
+      padding-left: 5px;
+    }
+    .recommendation {
+      background-color: #e7f3ff;
+      border: 1px solid #b3d9ff;
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 15px;
+      font-style: italic;
+    }
+    .ai-icon {
+      color: #02838f;
+      margin-right: 8px;
+    }
   </style>
 </head>
 <body>
@@ -72,7 +120,7 @@
         <!-- Left Column: User Submission -->
         <div class="col-md-6 mb-4">
           <div class="section">
-            <div class="column-title">Submitted Email</div>
+            <div class="column-title">📧 Submitted Email</div>
             <p><strong>From:</strong> {{ sender }}</p>
             <p><strong>Subject:</strong> {{ subject or "No Subject Provided" }}</p>
             <p><strong>Body:</strong><br><span class="email-body">{{ body }}</span></p>
@@ -82,8 +130,75 @@
         <!-- Right Column: AI Analysis -->
         <div class="col-md-6 mb-4">
           <div class="section">
-            <div class="column-title">AI Analysis</div>
-            <p>{{ analysis }}</p>
+            <div class="column-title">🤖 AI Security Analysis</div>
+            
+            {% if analysis %}
+              <!-- Phishing Risk Level -->
+              <div class="phishing-risk 
+                {% if analysis.phishing_chance == 'High' %}risk-high
+                {% elif analysis.phishing_chance == 'Medium' %}risk-medium
+                {% else %}risk-low{% endif %}">
+                🛡️ Phishing Risk: {{ analysis.phishing_chance | upper }}
+              </div>
+
+              <!-- Analysis Reasons -->
+              <div class="reasons-list">
+                <h6><span class="ai-icon">🔍</span>Key Findings:</h6>
+                {% for reason in analysis.reasons %}
+                  {% if reason and reason.strip() %}
+                    <div class="reason-item">
+                      <strong>•</strong> {{ reason }}
+                    </div>
+                  {% endif %}
+                {% endfor %}
+              </div>
+
+              <!-- AI Recommendation -->
+              <div class="recommendation">
+                <h6><span class="ai-icon">💡</span>Recommendation:</h6>
+                {{ analysis.recommendation }}
+              </div>
+
+            {% else %}
+              <div class="alert alert-warning">
+                <h6>⚠️ Analysis Unavailable</h6>
+                <p>AI analysis could not be completed at this time. Please review the email manually and exercise caution with any links or attachments.</p>
+              </div>
+            {% endif %}
+
+            <!-- Additional Security Tips -->
+            <div class="mt-4 p-3" style="background-color: #f8f9fa; border-radius: 6px; border-left: 4px solid #28a745;">
+              <h6 style="color: #28a745; margin-bottom: 8px;">🛡️ General Security Tips:</h6>
+              <ul style="font-size: 0.9rem; margin-bottom: 0;">
+                <li>Always verify sender identity through independent channels</li>
+                <li>Hover over links to check destinations before clicking</li>
+                <li>Be cautious of urgent language or threats</li>
+                <li>Never provide sensitive information via email</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="row mt-4">
+        <div class="col-12 text-center">
+          <a href="{{ url_for('home') }}" class="btn btn-primary btn-lg me-3">
+            📝 Analyze Another Email
+          </a>
+          <a href="{{ url_for('community') }}" class="btn btn-outline-primary btn-lg">
+            👥 View Community Submissions
+          </a>
+        </div>
+      </div>
+
+      <!-- Share Results Section -->
+      <div class="row mt-4">
+        <div class="col-12">
+          <div class="alert alert-info text-center">
+            <h6><span class="ai-icon">🤝</span>Help the Community</h6>
+            <p class="mb-2">Your submission has been added to our community database to help others learn about phishing patterns.</p>
+            <small class="text-muted">Personal information is never stored or shared.</small>
           </div>
         </div>
       </div>

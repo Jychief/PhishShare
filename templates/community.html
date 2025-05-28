@@ -19,11 +19,14 @@
     }
     .post-container {
       display: flex;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      padding: 15px;
-      margin-bottom: 20px;
-      background-color: #f9f9f9;
+      flex-direction: row;
+      border-radius: 1rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border: 3px solid transparent;
+      background: white;
+      box-shadow: 0 0.125rem 0.25rem rgb(0 0 0 / 0.075);
+      gap: 1rem;
     }
     .post-left, .post-center, .post-right {
       padding: 10px;
@@ -61,7 +64,6 @@
       opacity: 0.6;
       pointer-events: none;
     }
-    /* New scrollable feedback container */
     .feedback-list {
       max-height: 200px;
       overflow-y: auto;
@@ -72,31 +74,37 @@
       margin-top: 10px;
       flex-grow: 1;
     }
-
-    /* Scrollable fields for email parts */
     .post-left p.scrollable-field {
-      max-height: 5rem;          /* Adjust height as needed */
+      max-height: 5rem;
       overflow-y: auto;
-      padding-right: 5px;        /* To avoid scrollbar overlap */
-      white-space: pre-wrap;     /* Preserve line breaks */
-      word-wrap: break-word;     /* Break long words */
+      padding-right: 5px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
       border: 1px solid #ddd;
       border-radius: 4px;
       background-color: #fff;
       margin-bottom: 10px;
     }
     .navbar-custom {
-      background-color: #02838f !important; /* Teal */
+      background-color: #02838f !important;
     }
-
     .navbar-custom .nav-link {
       color: white !important;
       font-weight: 500;
     }
-
     .navbar-custom .nav-link:hover {
       color: #d1ecf1 !important;
       text-decoration: underline;
+    }
+    /* Border colors by phishing chance */
+    .border-red {
+      border-color: #e53935 !important;
+    }
+    .border-yellow {
+      border-color: #fbc02d !important;
+    }
+    .border-green {
+      border-color: #43a047 !important;
     }
   </style>
 </head>
@@ -107,7 +115,7 @@
         <img src="{{ url_for('static', filename='images/Phish_Share.png') }}" alt="PhishShare Logo" style="max-height: 120px;">
       </a>
     </div>
-    <!-- Navigation -->
+
     <nav class="navbar navbar-expand-lg navbar-custom my-4">
       <div class="container justify-content-center">
         <ul class="navbar-nav">
@@ -136,11 +144,19 @@
       </a>
     </div>
 
-    <!-- Submission Feed -->
     <div class="scrollable-feed mt-4">
       {% for submission in submissions %}
-      <div class="post-container">
-        <!-- Left: Email Submission -->
+              <div class="post-container 
+                {% if submission.ai_analysis.phishing_chance %}
+                  {% set chance = submission.ai_analysis.phishing_chance|lower %}
+                  {% if 'high' in chance %}
+                    border-red
+                  {% elif 'medium' in chance %}
+                    border-yellow
+                  {% elif 'low' in chance %}
+                    border-green
+                  {% endif %}
+                {% endif %}">
         <div class="post-left">
           <div class="user-info">
             <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" alt="User icon" />
@@ -158,13 +174,22 @@
           <p class="timestamp">Submitted: {{ submission.date_submitted }}</p>
         </div>
 
-        <!-- Center: AI Analysis -->
         <div class="post-center">
           <h6 class="fw-bold">AI Analysis</h6>
-          <p>{{ submission.analysis_summary }}</p>
+          {% if submission.ai_analysis.recommendation %}
+            <p><strong>Phishing Chance:</strong> {{ submission.ai_analysis.phishing_chance }}</p>
+            <p><strong>Reasons:</strong></p>
+            <ul>
+              {% for reason in submission.ai_analysis.reasons if reason %}
+                <li>{{ reason }}</li>
+              {% endfor %}
+            </ul>
+            <p><strong>Recommendation:</strong> {{ submission.ai_analysis.recommendation }}</p>
+          {% else %}
+            <p><em>Analysis is pending for this submission.</em></p>
+          {% endif %}
         </div>
 
-        <!-- Right: Feedback -->
         <div class="post-right">
           <h6 class="fw-bold">Community Feedback</h6>
           {% if logged_in %}
@@ -173,10 +198,7 @@
                 {% if csrf_token %}
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 {% endif %}
-
                 <input type="hidden" name="email_submission_id" value="{{ submission.id }}" />
-
-                <!-- Star Rating -->
                 <div class="mb-2 star-rating">
                   <label class="form-label d-block">Rating:</label>
                   <div class="star-container">
@@ -186,14 +208,10 @@
                   </div>
                   <input type="hidden" name="rating" id="rating-{{ submission.id }}" value="" required />
                 </div>
-
-                <!-- Comment Box -->
                 <div class="mb-2">
                   <label for="comment-{{ submission.id }}" class="form-label">Comment (max 250 characters):</label>
                   <textarea class="form-control" id="comment-{{ submission.id }}" name="comment" rows="3" maxlength="250" placeholder="Enter your comment"></textarea>
                 </div>
-
-                <!-- Submit Button -->
                 <button type="submit" class="btn btn-primary btn-sm">Submit</button>
               </form>
             {% else %}
@@ -206,7 +224,6 @@
             </div>
           {% endif %}
 
-          <!-- Display Community Feedback -->
           {% if submission.feedback %}
             <div class="feedback-list">
               {% for fb in submission.feedback %}
@@ -236,21 +253,20 @@
     </div>
   </div>
 
-  <!-- Star Rating JS -->
   <script>
     document.addEventListener("DOMContentLoaded", function () {
       const starContainers = document.querySelectorAll('.star-container');
-      
+
       starContainers.forEach(container => {
         const stars = container.querySelectorAll('.star-icon');
         const submissionId = stars[0].getAttribute('data-submission-id');
         const hiddenInput = document.getElementById('rating-' + submissionId);
-        
+
         stars.forEach((star, index) => {
           star.addEventListener('click', () => {
             const ratingValue = star.getAttribute('data-value');
             hiddenInput.value = ratingValue;
-            
+
             stars.forEach((s, i) => {
               if (i < ratingValue) {
                 s.classList.add('selected');
@@ -263,10 +279,10 @@
               }
             });
           });
-          
+
           star.addEventListener('mouseover', () => {
             const ratingValue = star.getAttribute('data-value');
-            
+
             stars.forEach((s, i) => {
               if (i < ratingValue) {
                 s.classList.add('selected');
@@ -275,10 +291,10 @@
               }
             });
           });
-          
+
           star.addEventListener('mouseout', () => {
             const selectedRating = hiddenInput.value || 0;
-            
+
             stars.forEach((s, i) => {
               if (i < selectedRating) {
                 s.classList.add('selected');
