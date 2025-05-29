@@ -1,9 +1,12 @@
+import pymysql
+pymysql.install_as_MySQLdb()
+
 from flask import Flask, render_template, request, redirect, url_for, session, flash, Response
-from flask_mysqldb import MySQL
+from flask_mysqldb import MySQL  # Keep this import, it will work with pymysql now
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
-import MySQLdb.cursors
+import MySQLdb.cursors  # This now points to pymysql because of install_as_MySQLdb()
 import csv
 import io
 import openai
