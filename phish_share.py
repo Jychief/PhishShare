@@ -1,12 +1,8 @@
 import pymysql
-pymysql.install_as_MySQLdb()
-
-from flask import Flask, render_template, request, redirect, url_for, session, flash, Response
-from flask_mysqldb import MySQL  # Keep this import, it will work with pymysql now
+from flask import Flask, render_template, request, redirect, url_for, session, flash, Response, g
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
-import MySQLdb.cursors  # This now points to pymysql because of install_as_MySQLdb()
 import csv
 import io
 import openai
@@ -33,8 +29,16 @@ app.config['MYSQL_USER'] = os.getenv('MYSQLUSER')
 app.config['MYSQL_PASSWORD'] = os.getenv('MYSQLPASSWORD')
 app.config['MYSQL_DB'] = os.getenv('MYSQLDATABASE')
 
-
-mysql = MySQL(app)
+def get_db():
+    """Get database connection"""
+    return pymysql.connect(
+        host=app.config['MYSQL_HOST'],
+        user=app.config['MYSQL_USER'],
+        password=app.config['MYSQL_PASSWORD'],
+        database=app.config['MYSQL_DB'],
+        charset='utf8mb4',
+        cursorclass=pymysql.cursors.DictCursor
+    )
 
 def analyze_email_with_ai(sender, subject, body):
     """
@@ -139,7 +143,8 @@ def save_ai_analysis(submission_id, analysis):
     Save AI analysis results to the database
     """
     try:
-        cursor = mysql.connection.cursor()
+        conn = get_db()
+        cursor = conn.cursor()
         
         # Fixed: Removed extra parameter - only 6 placeholders for 6 values
         cursor.execute('''
@@ -160,14 +165,15 @@ def save_ai_analysis(submission_id, analysis):
             analysis["recommendation"]
         ))
         
-        mysql.connection.commit()
+        conn.commit()
         cursor.close()
+        conn.close()
         return True
         
     except Exception as e:
         print(f"Database error saving AI analysis: {str(e)}")
-        if 'cursor' in locals():
-            cursor.close()
+        if 'conn' in locals():
+            conn.close()
         return False
 
 @app.route('/')
@@ -176,7 +182,8 @@ def home():
 
 @app.route('/community')
 def community():
-    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    conn = get_db()
+    cursor = conn.cursor()
 
     # Get all email submissions and their AI analysis with detailed breakdown
     query = """
@@ -247,6 +254,7 @@ def community():
         sub['feedback'] = feedback_map.get(sub['id'], [])
 
     cursor.close()
+    conn.close()
 
     return render_template(
         'community.html',
@@ -288,7 +296,8 @@ def submit_feedback():
         email_submission_id = int(email_submission_id)
         rating = int(rating)
 
-        cursor = mysql.connection.cursor()
+        conn = get_db()
+        cursor = conn.cursor()
 
         print("Database cursor created successfully")
 
@@ -316,19 +325,20 @@ def submit_feedback():
             """, (user_id, email_submission_id, rating, comment))
             flash("Thank you for your feedback!", "success")
 
-        mysql.connection.commit()
+        conn.commit()
         print("Transaction committed successfully")
         cursor.close()
+        conn.close()
 
     except ValueError as e:
         print(f"ValueError: {str(e)}")
         flash(f"Invalid data format: {str(e)}", "danger")
     except Exception as e:
         print(f"Exception: {str(e)}")
-        mysql.connection.rollback()
+        if 'conn' in locals():
+            conn.rollback()
+            conn.close()
         flash(f"Error submitting feedback: {str(e)}", "danger")
-        if 'cursor' in locals():
-            cursor.close()
 
     return redirect(url_for('community'))
 
@@ -344,13 +354,15 @@ def login():
         email = request.form['email']
         password = request.form['password']
 
-        cur = mysql.connection.cursor()
+        conn = get_db()
+        cur = conn.cursor()
         cur.execute("SELECT id, password_hash FROM users WHERE email = %s", (email,))
         user = cur.fetchone()
         cur.close()
+        conn.close()
 
-        if user and check_password_hash(user[1], password):
-            session['user_id'] = user[0]
+        if user and check_password_hash(user['password_hash'], password):
+            session['user_id'] = user['id']
             session['user_logged_in'] = True
             flash('Login successful!', 'success')
             return redirect(url_for('community'))
@@ -358,7 +370,8 @@ def login():
             flash('Invalid credentials', 'danger')
 
     if session.get('user_id'):
-        cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        conn = get_db()
+        cur = conn.cursor()
         cur.execute("""
             SELECT es.id, es.email_sender, es.email_subject, es.email_body,
                    cr.rating, cr.comment, cr.timestamp,
@@ -371,6 +384,7 @@ def login():
         """, (session['user_id'],))
         rows = cur.fetchall()
         cur.close()
+        conn.close()
 
         for row in rows:
             timestamp_str = row['timestamp'].strftime('%Y-%m-%d %H:%M') if row['timestamp'] else 'N/A'
@@ -447,7 +461,8 @@ def register():
             flash("Passwords do not match.", "danger")
             return render_template('register.html')
 
-        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        conn = get_db()
+        cursor = conn.cursor()
 
         try:
             # Check if username or email already exists
@@ -467,69 +482,23 @@ def register():
             print(f"Inserting user: {username}, {email}, [hashed_password]")  # Debug
             cursor.execute("INSERT INTO users (username, email, password_hash) VALUES (%s, %s, %s)",
                           (username, email, hashed_password))
-            mysql.connection.commit()
+            conn.commit()
             print("Insert and commit successful")  # Debug
             flash("Registration successful! Please log in.", "success")
             
         except Exception as e:
             print(f"Registration error: {str(e)}")
-            mysql.connection.rollback()
+            conn.rollback()
             flash(f"Registration failed: {str(e)}", "danger")
             return render_template('register.html')
 
         finally:
             cursor.close()
+            conn.close()
 
         return redirect(url_for('login'))
 
     return render_template('register.html')
-
-# @app.route('/submit_email', methods=['POST'])
-# def submit_email():
-#     try:
-#         sender = request.form['sender_email']
-#         subject = request.form['subject']
-#         body = request.form['body']
-
-#         # Basic validation
-#         if not sender or not subject or not body:
-#             flash("All fields are required.", "danger")
-#             return redirect(url_for('home'))
-
-#         # Save email submission to database first
-#         cursor = mysql.connection.cursor()
-#         cursor.execute('''
-#             INSERT INTO email_submissions (email_sender, email_subject, email_body, date_submitted)
-#             VALUES (%s, %s, %s, NOW())
-#         ''', (sender, subject, body))
-#         mysql.connection.commit()
-        
-#         # Get the ID of the newly inserted submission
-#         submission_id = cursor.lastrowid
-#         cursor.close()
-
-        # # Perform AI analysis
-        # print("Starting AI analysis...")
-        # analysis = analyze_email_with_ai(sender, subject, body)
-        # print(f"AI Analysis completed: {analysis}")
-        
-        # # Save AI analysis to database
-        # if save_ai_analysis(submission_id, analysis):
-        #     print("AI analysis saved successfully")
-        # else:
-        #     print("Failed to save AI analysis")
-
-#     except Exception as e:
-#         print(f"Error in submit_email: {str(e)}")
-#         flash(f"An error occurred: {e}", "danger")
-#         return redirect(url_for('home'))
-    
-#     # Pass the submitted data and AI analysis to the results template
-#     return render_template('results.html', 
-#                          sender=sender, 
-#                          subject=subject, 
-#                          body=body, 
-#                          analysis=analysis)
 
 @app.route('/submit_email', methods=['POST'])
 def submit_email():
@@ -544,15 +513,17 @@ def submit_email():
             flash("Sender email and body are required.", "danger")
             return redirect(url_for('home'))
 
-        cursor = mysql.connection.cursor()
+        conn = get_db()
+        cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO email_submissions (email_sender, email_subject, email_body, date_submitted)
             VALUES (%s, %s, %s, NOW())
         ''', (sender, subject, body))
-        mysql.connection.commit()
+        conn.commit()
 
         submission_id = cursor.lastrowid
         cursor.close()
+        conn.close()
 
         analysis = analyze_email_with_ai(sender, subject, body)
 
@@ -574,7 +545,8 @@ def submit_email():
 @app.route('/download_submissions')
 def download_submissions():
     try:
-        cur = mysql.connection.cursor()
+        conn = get_db()
+        cur = conn.cursor()
         cur.execute("""
             SELECT e.email_sender, e.email_subject, e.email_body, e.date_submitted,
                    a.phishing_chance, a.recommendation, 
@@ -594,7 +566,16 @@ def download_submissions():
         ])
 
         for sub in submissions:
-            sender, subject, body, date_submitted, phishing_chance, recommendation, reason_1, reason_2, reason_3 = sub
+            sender = sub['email_sender']
+            subject = sub['email_subject']
+            body = sub['email_body']
+            date_submitted = sub['date_submitted']
+            phishing_chance = sub['phishing_chance']
+            recommendation = sub['recommendation']
+            reason_1 = sub['reason_1']
+            reason_2 = sub['reason_2']
+            reason_3 = sub['reason_3']
+            
             if hasattr(date_submitted, 'strftime'):
                 date_submitted = date_submitted.strftime('%Y-%m-%d %H:%M:%S')
 
@@ -612,6 +593,7 @@ def download_submissions():
 
         output.seek(0)
         cur.close()
+        conn.close()
 
         return Response(
             output.getvalue(),
