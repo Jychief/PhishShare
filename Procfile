@@ -1,2 +1,2 @@
-web: gunicorn Phish_Share:app
+web: gunicorn phish_share:app
 
