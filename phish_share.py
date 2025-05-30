@@ -31,6 +31,13 @@ app.config['MYSQL_USER'] = os.getenv('MYSQLUSER')
 app.config['MYSQL_PASSWORD'] = os.getenv('MYSQLPASSWORD')
 app.config['MYSQL_DB'] = os.getenv('MYSQLDATABASE')
 
+# File size protection - prevent memory exhaustion attacks
+app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024  # 1MB limit
+
+@app.errorhandler(413)
+def too_large(e):
+    return "File too large - maximum 1MB allowed", 413
+
 # Rate limiting setup
 request_counts = defaultdict(lambda: {'count': 0, 'window_start': time()})
 
@@ -61,6 +68,7 @@ def get_db():
         charset='utf8mb4',
         cursorclass=pymysql.cursors.DictCursor
     )
+
 def analyze_email_with_ai(sender, subject, body):
     """
     Analyze email content using OpenAI to determine phishing likelihood
