@@ -91,6 +91,18 @@
       height: auto;
       min-height: 1.5rem;
       overflow: hidden;
+      font-size: 0.875rem;
+      line-height: 1.2;
+    }
+
+    /* FIX: Ensure stars stay on same line */
+    .feedback-list .text-warning {
+      display: inline-block;
+      white-space: nowrap;
+    }
+
+    .feedback-list .text-warning i {
+      display: inline;
     }
     .post-left p.scrollable-field {
       max-height: 5rem;
