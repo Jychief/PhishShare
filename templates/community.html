@@ -258,17 +258,17 @@
             <div class="feedback-list">
               {% for fb in submission.feedback %}
                 <div class="mb-3">
-                  <p class="mb-1">
-                    <strong>{{ fb.username }}</strong>
-                    <span class="text-warning ms-1">
-                      {% for i in range(fb.rating) %}
-                        <i class="bi bi-star-fill"></i>
-                      {% endfor %}
-                      {% for i in range(5 - fb.rating) %}
-                        <i class="bi bi-star"></i>
-                      {% endfor %}
-                    </span>
-                  </p>
+                    <p class="mb-1 text-start">
+                      <strong>{{ fb.username }}</strong>
+                      <span class="text-warning ms-1">
+                        {% for i in range(fb.rating) %}
+                          <i class="bi bi-star-fill"></i>
+                        {% endfor %}
+                        {% for i in range(5 - fb.rating) %}
+                          <i class="bi bi-star"></i>
+                        {% endfor %}
+                      </span>
+                    </p>
                   <!-- CHANGED: Replaced <p> with <textarea> for proper text wrapping -->
                   <textarea readonly class="form-control feedback-comment mb-1">{{ fb.comment }}</textarea>
                   <p class="timestamp">Rated on: {{ fb.timestamp }}</p>
