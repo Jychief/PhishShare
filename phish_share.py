@@ -8,6 +8,8 @@ import io
 import openai
 import json
 import os
+from time import time
+from collections import defaultdict
 
 # Initialize OpenAI client (using the new v1.0+ API)
 from openai import OpenAI
@@ -29,6 +31,26 @@ app.config['MYSQL_USER'] = os.getenv('MYSQLUSER')
 app.config['MYSQL_PASSWORD'] = os.getenv('MYSQLPASSWORD')
 app.config['MYSQL_DB'] = os.getenv('MYSQLDATABASE')
 
+# Rate limiting setup
+request_counts = defaultdict(lambda: {'count': 0, 'window_start': time()})
+
+@app.before_request
+def rate_limit():
+    ip = request.remote_addr
+    current_time = time()
+    window_size = 60  # 1 minute window
+    max_requests = 30  # Max 30 requests per minute
+    
+    # Reset window if it's been longer than window_size
+    if current_time - request_counts[ip]['window_start'] > window_size:
+        request_counts[ip] = {'count': 1, 'window_start': current_time}
+    else:
+        request_counts[ip]['count'] += 1
+    
+    # Check if limit exceeded
+    if request_counts[ip]['count'] > max_requests:
+        return "Rate limit exceeded. Too many requests.", 429
+
 def get_db():
     """Get database connection"""
     return pymysql.connect(
@@ -39,7 +61,6 @@ def get_db():
         charset='utf8mb4',
         cursorclass=pymysql.cursors.DictCursor
     )
-
 def analyze_email_with_ai(sender, subject, body):
     """
     Analyze email content using OpenAI to determine phishing likelihood
