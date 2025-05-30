@@ -73,6 +73,14 @@
       background-color: #fff;
       margin-top: 10px;
       flex-grow: 1;
+      overflow-x: hidden; /* Prevent horizontal scroll */
+    }
+    .feedback-list p {
+      word-wrap: break-word;
+      word-break: break-word;
+      white-space: pre-wrap;
+      margin-bottom: 8px;
+      overflow-wrap: anywhere; /* Force long words to wrap */
     }
     .post-left p.scrollable-field {
       max-height: 5rem;
