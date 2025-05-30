@@ -82,6 +82,16 @@
       margin-bottom: 8px;
       overflow-wrap: anywhere; /* Force long words to wrap */
     }
+    /* ADDED: New CSS for comment textarea styling */
+    .feedback-comment {
+      resize: none;
+      border: none;
+      background: transparent;
+      padding: 0;
+      height: auto;
+      min-height: 1.5rem;
+      overflow: hidden;
+    }
     .post-left p.scrollable-field {
       max-height: 5rem;
       overflow-y: auto;
@@ -247,7 +257,8 @@
                       {% endfor %}
                     </span>
                   </p>
-                  <p class="mb-1">{{ fb.comment }}</p>
+                  <!-- CHANGED: Replaced <p> with <textarea> for proper text wrapping -->
+                  <textarea readonly class="form-control feedback-comment mb-1">{{ fb.comment }}</textarea>
                   <p class="timestamp">Rated on: {{ fb.timestamp }}</p>
                 </div>
               {% endfor %}
@@ -316,6 +327,13 @@
             });
           });
         });
+      });
+
+      // ADDED: Auto-resize textarea to fit content
+      const feedbackTextareas = document.querySelectorAll('.feedback-comment');
+      feedbackTextareas.forEach(textarea => {
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
       });
     });
   </script>
